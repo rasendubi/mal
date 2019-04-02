@@ -1,36 +1,25 @@
-use std::io;
-use std::io::Write;
-use std::io::ErrorKind;
+extern crate rustyline;
+
+mod readline;
+
+use rustyline::error::ReadlineError;
 
 const PROMPT: &str = "user> ";
 
 fn main() {
     loop {
-        print!("{}", PROMPT);
-        io::stdout().flush().unwrap();
-
         match rep() {
             Ok(_) => (),
+            Err(ReadlineError::Eof) | Err(ReadlineError::Interrupted) => return,
             Err(error) => {
-                if error.kind() == ErrorKind::UnexpectedEof {
-                    return;
-                }
                 println!("Error: {}", error);
             },
         }
     }
 }
 
-fn read() -> Result<String, std::io::Error> {
-    let mut input = String::new();
-    match io::stdin().read_line(&mut input) {
-        Ok(n) => if n == 0 {
-            Err(std::io::Error::new(ErrorKind::UnexpectedEof, "End of file"))
-        } else {
-            Ok(input)
-        },
-        Err(error) => Err(error),
-    }
+fn read() -> rustyline::Result<String> {
+    readline::read(PROMPT)
 }
 
 fn eval(str: &String) -> &String {
@@ -38,9 +27,9 @@ fn eval(str: &String) -> &String {
 }
 
 fn print(str: &String) {
-    print!("{}", str);
+    println!("{}", str);
 }
 
-fn rep() -> Result<(), std::io::Error> {
+fn rep() -> rustyline::Result<()> {
     Ok(print(eval(&read()?)))
 }

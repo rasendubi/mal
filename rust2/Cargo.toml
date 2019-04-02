@@ -5,6 +5,7 @@ authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+rustyline = "3.0.0"
 
 [[bin]]
 name = "step0_repl"
