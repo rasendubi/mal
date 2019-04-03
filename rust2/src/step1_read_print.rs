@@ -17,7 +17,7 @@ fn main() {
                 match rep(&line) {
                     Ok(result) => println!("{}", result),
                     Err(error) => {
-                        println!("Error: {:?}", error);
+                        println!("Error: {}", error);
                     }
                 }
             }

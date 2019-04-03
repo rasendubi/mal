@@ -17,8 +17,8 @@ pub enum MalAtom {
 }
 
 #[derive(Debug)]
-pub enum MalError {
-    ParseError,
+pub enum MalError<'input> {
+    ParseError(lalrpop_util::ParseError<usize, (usize, &'input str), &'static str>),
 }
 
 impl fmt::Display for MalForm {
@@ -77,6 +77,15 @@ impl fmt::Display for MalAtom {
             MalAtom::Symbol(s) => write!(f, "{}", s),
             MalAtom::Number(n) => write!(f, "{}", n),
             MalAtom::String(s) => write!(f, "{:?}", s),
+        }
+    }
+}
+
+impl<'input> fmt::Display for MalError<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MalError::ParseError(err) =>
+                write!(f, "{}", err.clone().map_token(|(size,s)| s.chars().nth(size).unwrap())),
         }
     }
 }

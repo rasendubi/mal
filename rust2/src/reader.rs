@@ -11,13 +11,11 @@ pub fn read_str(str: &str) -> Result<MalForm, MalError> {
             if errors.is_empty() {
                 Ok(res)
             } else {
-                println!("{:?}", errors);
-                Err(MalError::ParseError)
+                Err(MalError::ParseError(errors[0].clone()))
             }
         }
         Err(err) => {
-            println!("{}", err);
-            Err(MalError::ParseError)
+            Err(MalError::ParseError(err.map_token(|t| (t.0, t.1))))
         },
     }
 }
