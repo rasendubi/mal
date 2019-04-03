@@ -1,19 +1,24 @@
 use std::fmt;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum MalForm {
     List(Vec<MalForm>),
     Vector(Vec<MalForm>),
     Atom(MalAtom),
-    // shortcut
-    HashMap(Vec<MalForm>),
+    HashMap(HashMap<MalKey, MalForm>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MalKey {
+    Symbol(String),
+    String(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum MalAtom {
+    Key(MalKey),
     Number(f32),
-    Symbol(String),
-    String(String),
 }
 
 #[derive(Debug)]
@@ -57,11 +62,11 @@ impl fmt::Display for MalForm {
                 write!(f, "{{")?;
                 let mut it = xs.into_iter();
 
-                if let Some(x) = it.next() {
-                    write!(f, "{}", x)?;
+                if let Some((k, v)) = it.next() {
+                    write!(f, "{} {}", k, v)?;
 
-                    for x in it {
-                        write!(f, " {}", x)?;
+                    for (k, v) in it {
+                        write!(f, " {} {}", k, v)?;
                     }
                 }
 
@@ -74,9 +79,17 @@ impl fmt::Display for MalForm {
 impl fmt::Display for MalAtom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MalAtom::Symbol(s) => write!(f, "{}", s),
             MalAtom::Number(n) => write!(f, "{}", n),
-            MalAtom::String(s) => write!(f, "{:?}", s),
+            MalAtom::Key(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl fmt::Display for MalKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MalKey::Symbol(s) => write!(f, "{}", s),
+            MalKey::String(s) => write!(f, "{:?}", s),
         }
     }
 }
