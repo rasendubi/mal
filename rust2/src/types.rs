@@ -11,14 +11,15 @@ pub enum MalForm {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MalKey {
-    Symbol(String),
     String(String),
+    Keyword(String),
 }
 
 #[derive(Debug, Clone)]
 pub enum MalAtom {
     Key(MalKey),
     Number(f32),
+    Symbol(String),
 }
 
 #[derive(Debug)]
@@ -79,8 +80,9 @@ impl fmt::Display for MalForm {
 impl fmt::Display for MalAtom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MalAtom::Number(n) => write!(f, "{}", n),
             MalAtom::Key(s) => write!(f, "{}", s),
+            MalAtom::Number(n) => write!(f, "{}", n),
+            MalAtom::Symbol(s) => write!(f, "{}", s),
         }
     }
 }
@@ -88,8 +90,8 @@ impl fmt::Display for MalAtom {
 impl fmt::Display for MalKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MalKey::Symbol(s) => write!(f, "{}", s),
             MalKey::String(s) => write!(f, "{:?}", s),
+            MalKey::Keyword(s) => write!(f, ":{}", s),
         }
     }
 }
@@ -98,7 +100,7 @@ impl<'input> fmt::Display for MalError<'input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MalError::ParseError(err) =>
-                write!(f, "{}", err.clone().map_token(|(size,s)| s.chars().nth(size).unwrap())),
+                write!(f, "{}", err.clone().map_token(|(_size,s)| s)),
         }
     }
 }
