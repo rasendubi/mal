@@ -98,6 +98,43 @@ fn process_bindings(bindings_ast: &MalForm, env: &mut Env) -> MalResult<()> {
     Ok(())
 }
 
+fn eval_def_(args: &[MalForm], env: &mut Env) -> MalResult<MalForm> {
+    match args {
+        [MalForm::Atom(MalAtom::Symbol(name)), val_ast] => {
+            let val = eval(val_ast, env)?;
+            env.set(name.clone(), val.clone());
+            Ok(val)
+        },
+        [_, _] => Err(MalError::EvalError("'def!': first argument must be a symbol".to_string())),
+        _ => Err(MalError::EvalError("'def!' requires at least 2 arguments".to_string())),
+    }
+}
+
+fn eval_let_(args: &[MalForm], env: &mut Env) -> MalResult<MalForm> {
+    match args {
+        [bindings_ast, value_ast] => {
+            let mut new_env = Env::new(Some(env));
+            process_bindings(bindings_ast, &mut new_env)?;
+            eval(value_ast, &mut new_env)
+        },
+        _ => Err(MalError::EvalError("'let*' requires at least 2 arguments".to_string())),
+    }
+}
+
+fn eval_fn(ast: &MalForm, env: &mut Env) -> MalResult<MalForm> {
+    if let MalForm::List(xs) = eval_ast(ast, env)? {
+        match &xs[0] {
+            MalForm::NativeFn(_, MalNativeFn(f)) => {
+                let args = &xs[1 ..];
+                f(args.to_vec())
+            },
+            head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
+        }
+    } else {
+        unreachable!();
+    }
+}
+
 fn eval(ast: &MalForm, env: &mut Env) -> MalResult<MalForm> {
     Ok(if let MalForm::List(xs) = ast {
         if xs.is_empty() {
@@ -105,40 +142,9 @@ fn eval(ast: &MalForm, env: &mut Env) -> MalResult<MalForm> {
         } else {
             let s = xs.as_slice();
             match &s[0] {
-                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "def!" => {
-                    let name_ast = s.get(1).ok_or(MalError::EvalError("'def!' requires at least 2 arguments".to_string()))?;
-                    let val_ast  = s.get(2).ok_or(MalError::EvalError("'def!' requires at least 2 arguments".to_string()))?;
-                    if let MalForm::Atom(MalAtom::Symbol(name)) = name_ast {
-                        let val = eval(val_ast, env)?;
-                        env.set(name.clone(), val.clone());
-                        val
-                    } else {
-                        return Err(MalError::EvalError("'def!': first argument must be a symbol".to_string()));
-                    }
-                },
-
-                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "let*" => {
-                    let mut new_env = Env::new(Some(env));
-                    let bindings_ast = s.get(1).ok_or(MalError::EvalError("'let*' requires at least 2 arguments".to_string()))?;
-                    let value_ast = s.get(2).ok_or(MalError::EvalError("'let*' requires at least 2 arguments".to_string()))?;
-                    process_bindings(bindings_ast, &mut new_env)?;
-                    eval(value_ast, &mut new_env)?
-                },
-
-                _ => {
-                    if let MalForm::List(xs) = eval_ast(ast, env)? {
-                        let s = xs.as_slice();
-                        match &s[0] {
-                            MalForm::NativeFn(_, MalNativeFn(f)) => {
-                                let args = &s[1 ..];
-                                f(args.to_vec())?
-                            },
-                            head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
-                        }
-                    } else {
-                        unreachable!();
-                    }
-                },
+                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "def!" => eval_def_(&s[1..], env)?,
+                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "let*" => eval_let_(&s[1..], env)?,
+                _ => eval_fn(ast, env)?,
             }
         }
     } else {
