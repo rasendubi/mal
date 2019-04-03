@@ -11,11 +11,10 @@ pub enum MalForm {
     Vector(Vec<MalForm>),
     Atom(MalAtom),
     HashMap(HashMap<MalKey, MalForm>),
-    Error(MalError),
 }
 
 #[derive(Clone)]
-pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalForm>);
+pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalResult<MalForm>>);
 
 impl fmt::Debug for MalNativeFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -42,11 +41,12 @@ pub enum MalError {
     EvalError(String),
 }
 
+pub type MalResult<T> = Result<T, MalError>;
+
 impl fmt::Display for MalForm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MalForm::NativeFn(name, _) => write!(f, "{}", name),
-            MalForm::Error(err) => write!(f, "(error {})", err),
             MalForm::Atom(x) => write!(f, "{}", x),
             MalForm::List(xs) => {
                 write!(f, "(")?;
