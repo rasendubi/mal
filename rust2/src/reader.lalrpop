@@ -40,7 +40,7 @@ Key = { String, Keyword }
 
 String: MalKey = <s:r#""(?:\\.|[^\\"])*"?"#> => {
     if s.chars().last().unwrap() != '"' {
-        errors.push(lalrpop_util::ParseError::User { error: "Unbalanced quote" });
+        errors.push(lalrpop_util::ParseError::User { error: "Detected unbalanced quote" });
     }
     MalKey::String(unescape(s))
 };

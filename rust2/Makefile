@@ -4,11 +4,11 @@ all: build
 STEPS := step0_repl step1_read_print step2_eval
 
 $(STEPS): build
-	cp target/release/$@ $@
+	cp target/debug/$@ $@
 
 .PHONY: build
 build:
-	nix-shell --run 'cargo build --release'
+	nix-shell --run 'cargo build'
 
 .PHONY: clean
 clean:
