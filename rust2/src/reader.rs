@@ -15,7 +15,7 @@ pub fn read_str(str: &str) -> Result<MalForm, MalError> {
             }
         }
         Err(err) => {
-            Err(MalError::ParseError(err.map_token(|t| (t.0, t.1))))
+            Err(MalError::ParseError(err.map_token(|t| (t.0, t.1.to_string()))))
         },
     }
 }

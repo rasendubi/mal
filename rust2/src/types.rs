@@ -1,12 +1,26 @@
+#![allow(dead_code)]
+
 use std::fmt;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum MalForm {
+    NativeFn(String, MalNativeFn),
     List(Vec<MalForm>),
     Vector(Vec<MalForm>),
     Atom(MalAtom),
     HashMap(HashMap<MalKey, MalForm>),
+    Error(MalError),
+}
+
+#[derive(Clone)]
+pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalForm>);
+
+impl fmt::Debug for MalNativeFn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<native-fn>")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -22,14 +36,17 @@ pub enum MalAtom {
     Symbol(String),
 }
 
-#[derive(Debug)]
-pub enum MalError<'input> {
-    ParseError(lalrpop_util::ParseError<usize, (usize, &'input str), &'static str>),
+#[derive(Debug, Clone)]
+pub enum MalError {
+    ParseError(lalrpop_util::ParseError<usize, (usize, String), &'static str>),
+    EvalError(String),
 }
 
 impl fmt::Display for MalForm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            MalForm::NativeFn(name, _) => write!(f, "{}", name),
+            MalForm::Error(err) => write!(f, "(error {})", err),
             MalForm::Atom(x) => write!(f, "{}", x),
             MalForm::List(xs) => {
                 write!(f, "(")?;
@@ -96,11 +113,12 @@ impl fmt::Display for MalKey {
     }
 }
 
-impl<'input> fmt::Display for MalError<'input> {
+impl fmt::Display for MalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MalError::ParseError(err) =>
                 write!(f, "{}", err.clone().map_token(|(_size,s)| s)),
+            MalError::EvalError(msg) => write!(f, "Evaluation Error: {}", msg),
         }
     }
 }

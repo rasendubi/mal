@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::types::{MalForm, MalAtom, MalKey};
 use crate::utils::unescape;
 
-grammar<'err>(errors: &'err mut Vec<lalrpop_util::ParseError<usize, (usize, &'input str), &'static str>>);
+grammar<'err>(errors: &'err mut Vec<lalrpop_util::ParseError<usize, (usize, String), &'static str>>);
 
 pub Form: MalForm = <FormInner> ws?;
 
