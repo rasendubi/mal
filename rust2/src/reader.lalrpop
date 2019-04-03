@@ -1,0 +1,43 @@
+use std::str::FromStr;
+
+use crate::types::{MalForm, MalAtom};
+use crate::utils::unescape;
+
+grammar<'err>(errors: &'err mut Vec<lalrpop_util::ParseError<usize, (usize, &'input str), &'static str>>);
+
+pub Form: MalForm = <FormInner> ws?;
+
+FormInner: MalForm = {
+    ws? <atom:Atom> => MalForm::Atom(atom),
+    ws? <list:List> => MalForm::List(list),
+    ws? <vector:Vector> => MalForm::Vector(vector),
+    ws? <hash:HashMap> => MalForm::HashMap(hash),
+    ws? "'" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("quote".to_string())), form)),
+    ws? "`" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("quasiquote".to_string())), form)),
+    ws? "~" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("unquote".to_string())), form)),
+    ws? "~@" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("splice-unquote".to_string())), form)),
+    ws? "@" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("deref".to_string())), form)),
+    ws? "^" <meta:FormInner> <val:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("with-meta".to_string())), val, meta)),
+}
+
+ws: () = { Whitespace, Comment };
+Whitespace = r"[\s,]+";
+Comment = r";.*";
+
+List = "(" <FormInner*> ws? ")";
+Vector = "[" <FormInner*> ws? "]";
+HashMap = "{" <FormInner*> ws? "}";
+
+Atom: MalAtom = { String, NumOrSymbol };
+
+NumOrSymbol: MalAtom = <s:r#"[^@~\s\[\]{}('"`,;)][^\s\[\]{}('"`,;)]*"#> => match f32::from_str(s) {
+    Ok(n) => MalAtom::Number(n),
+    Err(_) => MalAtom::Symbol(String::from(s)),
+};
+
+String: MalAtom = <s:r#""(?:\\.|[^\\"])*"?"#> => {
+    if s.chars().last().unwrap() != '"' {
+        errors.push(lalrpop_util::ParseError::User { error: "unbalanced quote" });
+    }
+    MalAtom::String(unescape(s))
+};

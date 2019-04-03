@@ -1,7 +1,7 @@
 .PHONY: all
 all: build
 
-STEPS := step0_repl
+STEPS := step0_repl step1_read_print
 
 $(STEPS): build
 	cp target/release/$@ $@

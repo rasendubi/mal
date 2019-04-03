@@ -4,9 +4,18 @@ version = "0.1.0"
 authors = ["Alexey Shmalko <rasen.dubi@gmail.com>"]
 edition = "2018"
 
+[build-dependencies]
+lalrpop = "0.16.3"
+
 [dependencies]
 rustyline = "3.0.0"
+lalrpop-util = "0.16.3"
+regex = "0.2.1"
 
 [[bin]]
 name = "step0_repl"
 path = "src/step0_repl.rs"
+
+[[bin]]
+name = "step1_read_print"
+path = "src/step1_read_print.rs"
