@@ -18,7 +18,7 @@ const PROMPT: &str = "user> ";
 const HISTORY_FILE: &str = "mal_history.txt";
 
 fn binary_fn(name: &'static str, f: fn(f64, f64) -> f64) -> MalForm {
-    MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>| {
+    MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>, _| {
         match vec.as_slice() {
             [MalForm::Number(ref a), MalForm::Number(ref b)] => Ok(MalForm::Number(f(*a, *b))),
             _ => Err(MalError::EvalError(format!("'{}': wrong arguments", name))),
@@ -130,7 +130,7 @@ fn eval_fn(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
         match &xs[0] {
             MalForm::NativeFn(_, MalNativeFn(f)) => {
                 let args = &xs[1 ..];
-                f(args.to_vec())
+                f(args.to_vec(), env)
             },
             head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
         }

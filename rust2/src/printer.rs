@@ -30,6 +30,7 @@ pub fn pr_str(x: &MalForm, print_readably: bool) -> String {
                 .collect();
             format!("{{{}}}", pr_seq(&v, " ", print_readably))
         },
+        MalForm::Atom(x) => format!("(atom {})", pr_str(&x.borrow(), print_readably)),
     }
 }
 

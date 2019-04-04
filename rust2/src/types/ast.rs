@@ -17,10 +17,11 @@ pub enum MalForm {
     Symbol(String),
     Bool(bool),
     Nil,
+    Atom(Rc<RefCell<MalForm>>),
 }
 
 #[derive(Clone)]
-pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalResult<MalForm>>);
+pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>, &Rc<RefCell<Env>>) -> MalResult<MalForm>>);
 
 #[derive(Debug, Clone)]
 pub struct MalFn {
@@ -36,7 +37,7 @@ impl MalFn {
             ast: body.clone(),
             params: bindings.clone(),
             env: outer.clone(),
-            fn_: MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params| {
+            fn_: MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params, _env| {
                 let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
 
                 eval(&body, &env)

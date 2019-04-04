@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::clone::Clone;
 
 mod readline;
@@ -9,13 +10,13 @@ mod utils;
 mod printer;
 
 use rustyline::error::ReadlineError;
-use types::{MalForm,MalError,MalNativeFn,MalResult};
+use types::{MalForm,MalError,MalNativeFn,MalResult,Env as NewEnv};
 
 const PROMPT: &str = "user> ";
 const HISTORY_FILE: &str = "mal_history.txt";
 
 fn binary_fn(name: &'static str, f: fn(f64, f64) -> f64) -> MalForm {
-    MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>| {
+    MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>, _| {
         match vec.as_slice() {
             [MalForm::Number(ref a), MalForm::Number(ref b)] => Ok(MalForm::Number(f(*a, *b))),
             _ => Err(MalError::EvalError(format!("'{}': wrong arguments", name))),
@@ -87,7 +88,7 @@ fn eval(ast: &MalForm, env: &mut Env) -> MalResult<MalForm> {
             let f_ast = &v.as_slice()[0];
             let args = &v.as_slice()[1 ..];
             match f_ast {
-                MalForm::NativeFn(_, MalNativeFn(f)) => f(args.to_vec())?,
+                MalForm::NativeFn(_, MalNativeFn(f)) => f(args.to_vec(), &Rc::new(RefCell::new(NewEnv::new(None))))?,
                 _ => return Err(MalError::EvalError(format!("'{}' is not a function", f_ast))),
             }
         } else {

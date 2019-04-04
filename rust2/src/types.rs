@@ -38,3 +38,9 @@ impl ToMalForm for MalKey {
         MalForm::Key(self.clone())
     }
 }
+
+impl ToMalForm for str {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Key(MalKey::String(String::from(self)))
+    }
+}

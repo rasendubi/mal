@@ -12,7 +12,7 @@ mod core;
 mod printer;
 
 use rustyline::error::ReadlineError;
-use types::{MalForm,MalError,MalNativeFn,MalFn,MalResult};
+use types::{MalForm,MalError,MalNativeFn,MalFn,MalResult,ToMalForm};
 use env::Env;
 
 const PROMPT: &str = "user> ";
@@ -27,14 +27,51 @@ fn main() {
         repl_env.borrow_mut().set(name.to_string(), val.clone());
     }
 
-    let repl_env_clone = repl_env.clone(); // to be moved into eval
-    repl_env.borrow_mut().set("eval".to_string(), core::native_fn("eval", move |args| {
-        let ast = args.get(0).ok_or(MalError::EvalError(format!("'eval': argument required")))?;
-        eval(&ast, &repl_env_clone)
-    }));
+    {
+        let repl_env_clone = repl_env.clone(); // to be moved into eval
+        repl_env.borrow_mut().set("eval".to_string(), core::native_fn("eval", move |args, _| {
+            let ast = args.get(0).ok_or(MalError::EvalError(format!("'eval': argument required")))?;
+            eval(&ast, &repl_env_clone)
+        }));
+    }
+    {
+        let repl_env_clone = repl_env.clone(); // to be moved into eval
+        repl_env.borrow_mut().set("swap!".to_string(), core::native_fn("swap!", move |args, _| {
+            if args.len() < 2 {
+                return Err(MalError::EvalError(format!("'swap!': at least 2 argument required")));
+            }
+
+            if let MalForm::Atom(ref atom) = args[0] {
+                let cur = { atom.borrow().clone() };
+
+                let mut f_args = vec![args[1].clone(), cur];
+                for arg in &args[2 ..] {
+                    f_args.push(arg.clone());
+                }
+
+                // Not sure if that should be repl env or calling env
+                let res = eval(&MalForm::List(f_args), &repl_env_clone)?;
+
+                *atom.borrow_mut() = res.clone();
+
+                Ok(res)
+            } else {
+                return Err(MalError::EvalError(format!("'swap!': first argument must be an atom")));
+            }
+        }));
+    }
+
+    repl_env.borrow_mut().set(
+        "*ARGV*".to_string(),
+        MalForm::List(std::env::args().skip(2).map(|x| x.to_mal_form()).collect::<Vec<MalForm>>()));
 
     let _ = rep(r#"(def! not (fn* (a) (if a false true)))"#, &repl_env);
     let _ = rep(r#"(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))"#, &repl_env);
+
+    if let Some(file) = std::env::args().nth(1) {
+        let _ = rep(&format!("(load-file {:?})", file), &repl_env);
+        return;
+    }
 
     loop {
         match editor.readline(PROMPT) {
@@ -186,7 +223,7 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
                         match &xs[0] {
                             MalForm::NativeFn(_, MalNativeFn(f)) => {
                                 let args = &xs[1 ..];
-                                return f(args.to_vec());
+                                return f(args.to_vec(), &env);
                             },
                             MalForm::MalFn(f) => {
                                 env = Rc::new(RefCell::new(Env::new_fn_closure(

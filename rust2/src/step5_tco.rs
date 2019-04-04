@@ -179,7 +179,7 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
                         match &xs[0] {
                             MalForm::NativeFn(_, MalNativeFn(f)) => {
                                 let args = &xs[1 ..];
-                                return f(args.to_vec());
+                                return f(args.to_vec(), &env);
                             },
                             MalForm::MalFn(f) => {
                                 env = Rc::new(RefCell::new(Env::new_fn_closure(

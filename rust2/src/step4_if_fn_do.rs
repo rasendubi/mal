@@ -122,7 +122,7 @@ fn eval_fn(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
         match &xs[0] {
             MalForm::NativeFn(_, MalNativeFn(f)) => {
                 let args = &xs[1 ..];
-                f(args.to_vec())
+                f(args.to_vec(), env)
             },
             head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
         }
@@ -175,7 +175,7 @@ fn eval_fn_(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     let bindings = get_binds(&args[0])?;
     let body = args[1].clone();
 
-    Ok(MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params| {
+    Ok(MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params, _env| {
         let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
 
         eval(&body, &env)
