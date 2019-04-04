@@ -8,6 +8,7 @@ mod types;
 mod reader;
 mod utils;
 mod env;
+mod printer;
 
 use rustyline::error::ReadlineError;
 use types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult};

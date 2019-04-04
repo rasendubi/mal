@@ -8,6 +8,8 @@ mod types;
 mod reader;
 mod utils;
 mod env;
+mod core;
+mod printer;
 
 use rustyline::error::ReadlineError;
 use types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult};
@@ -16,25 +18,16 @@ use env::Env;
 const PROMPT: &str = "user> ";
 const HISTORY_FILE: &str = "mal_history.txt";
 
-fn binary_fn(name: &'static str, f: fn(f32, f32) -> f32) -> MalForm {
-    MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>| {
-        match vec.as_slice() {
-            [MalForm::Atom(MalAtom::Number(ref a)), MalForm::Atom(MalAtom::Number(ref b))] => Ok(MalForm::Atom(MalAtom::Number(f(*a, *b)))),
-            _ => Err(MalError::EvalError(format!("'{}': wrong arguments", name))),
-        }
-    })))
-}
-
 fn main() {
     let mut editor = readline::Reader::new(HISTORY_FILE);
 
     let mut repl_env = Env::new(None);
-    repl_env.set("+".to_string(), binary_fn("+", |a,b| a + b));
-    repl_env.set("-".to_string(), binary_fn("-", |a,b| a - b));
-    repl_env.set("*".to_string(), binary_fn("*", |a,b| a * b));
-    repl_env.set("/".to_string(), binary_fn("/", |a,b| a / b));
-
+    for (name, val) in core::get_namespace() {
+        repl_env.set(name.to_string(), val.clone());
+    }
     let repl_env = Rc::new(RefCell::new(repl_env));
+
+    let _ = rep("(def! not (fn* (a) (if a false true)))", &repl_env);
 
     loop {
         match editor.readline(PROMPT) {
@@ -55,7 +48,7 @@ fn main() {
     }
 }
 
-fn read(str: &String) -> MalResult<MalForm> {
+fn read(str: &str) -> MalResult<MalForm> {
     reader::read_str(str)
 }
 
@@ -142,7 +135,7 @@ fn eval_do(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     let mut result = MalForm::Atom(MalAtom::Nil);
 
     for arg in args {
-        result = eval_ast(&arg, env)?;
+        result = eval(&arg, env)?;
     }
 
     Ok(result)
@@ -213,6 +206,6 @@ fn print(form: MalForm) -> String {
     format!("{}", form)
 }
 
-fn rep(str: &String, env: &Rc<RefCell<Env>>) -> Result<String, MalError> {
+fn rep(str: &str, env: &Rc<RefCell<Env>>) -> Result<String, MalError> {
     Ok(print(eval(&read(str)?, env)?))
 }

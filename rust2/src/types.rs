@@ -16,19 +16,13 @@ pub enum MalForm {
 #[derive(Clone)]
 pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalResult<MalForm>>);
 
-impl fmt::Debug for MalNativeFn {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "#<function>")
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MalKey {
     String(String),
     Keyword(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MalAtom {
     Key(MalKey),
     Number(f32),
@@ -46,75 +40,39 @@ pub enum MalError {
 
 pub type MalResult<T> = Result<T, MalError>;
 
-impl fmt::Display for MalForm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl MalForm {
+    pub fn coerce_list(&self) -> Option<&Vec<MalForm>> {
         match self {
-            MalForm::NativeFn(name, _) => write!(f, "#<{}>", name),
-            MalForm::Atom(x) => write!(f, "{}", x),
-            MalForm::List(xs) => {
-                write!(f, "(")?;
-                let mut it = xs.into_iter();
-
-                if let Some(x) = it.next() {
-                    write!(f, "{}", x)?;
-
-                    for x in it {
-                        write!(f, " {}", x)?;
-                    }
-                }
-
-                write!(f, ")")
-            },
-            MalForm::Vector(xs) => {
-                write!(f, "[")?;
-                let mut it = xs.into_iter();
-
-                if let Some(x) = it.next() {
-                    write!(f, "{}", x)?;
-
-                    for x in it {
-                        write!(f, " {}", x)?;
-                    }
-                }
-
-                write!(f, "]")
-            },
-            MalForm::HashMap(xs) => {
-                write!(f, "{{")?;
-                let mut it = xs.into_iter();
-
-                if let Some((k, v)) = it.next() {
-                    write!(f, "{} {}", k, v)?;
-
-                    for (k, v) in it {
-                        write!(f, " {} {}", k, v)?;
-                    }
-                }
-
-                write!(f, "}}")
-            },
+            MalForm::List(v) => Some(v),
+            MalForm::Vector(v) => Some(v),
+            _ => None,
         }
     }
 }
 
-impl fmt::Display for MalAtom {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MalAtom::Key(s) => write!(f, "{}", s),
-            MalAtom::Number(n) => write!(f, "{}", n),
-            MalAtom::Symbol(s) => write!(f, "{}", s),
-            MalAtom::True => write!(f, "true"),
-            MalAtom::False => write!(f, "false"),
-            MalAtom::Nil => write!(f, "nil"),
-        }
+impl PartialEq<MalNativeFn> for MalNativeFn {
+    fn eq(&self, _other: &MalNativeFn) -> bool {
+        false
     }
 }
 
-impl fmt::Display for MalKey {
+impl fmt::Debug for MalNativeFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MalKey::String(s) => write!(f, "{:?}", s),
-            MalKey::Keyword(s) => write!(f, ":{}", s),
+        write!(f, "#<function>")
+    }
+}
+
+impl PartialEq<MalForm> for MalForm {
+    fn eq(&self, other: &MalForm) -> bool {
+        if let ml1@Some(_) = self.coerce_list() {
+            return ml1 == other.coerce_list();
+        }
+
+        match (self, other) {
+            (MalForm::NativeFn(_, f1), MalForm::NativeFn(_, f2)) => f1 == f2,
+            (MalForm::Atom(a1), MalForm::Atom(a2)) => a1 == a2,
+            (MalForm::HashMap(h1), MalForm::HashMap(h2)) => h1 == h2,
+            _ => false,
         }
     }
 }
@@ -126,5 +84,39 @@ impl fmt::Display for MalError {
                 write!(f, "{}", err.clone().map_token(|(_size,s)| s)),
             MalError::EvalError(msg) => write!(f, "Evaluation Error: {}", msg),
         }
+    }
+}
+
+pub trait ToMalForm {
+    fn to_mal_form(&self) -> MalForm;
+}
+
+impl ToMalForm for bool {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Atom(if *self {MalAtom::True} else {MalAtom::False})
+    }
+}
+
+impl ToMalForm for f32 {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Atom(MalAtom::Number(*self))
+    }
+}
+
+impl ToMalForm for String {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Atom(MalAtom::Key(MalKey::String(self.clone())))
+    }
+}
+
+impl ToMalForm for () {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Atom(MalAtom::Nil)
+    }
+}
+
+impl ToMalForm for MalKey {
+    fn to_mal_form(&self) -> MalForm {
+        MalForm::Atom(MalAtom::Key(self.clone()))
     }
 }

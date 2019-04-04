@@ -6,6 +6,7 @@ mod readline;
 mod types;
 mod reader;
 mod utils;
+mod printer;
 
 use rustyline::error::ReadlineError;
 use types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult};
