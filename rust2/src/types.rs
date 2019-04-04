@@ -18,7 +18,7 @@ pub struct MalNativeFn(pub Rc<Fn(Vec<MalForm>) -> MalResult<MalForm>>);
 
 impl fmt::Debug for MalNativeFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<native-fn>")
+        write!(f, "#<function>")
     }
 }
 
@@ -33,6 +33,9 @@ pub enum MalAtom {
     Key(MalKey),
     Number(f32),
     Symbol(String),
+    True,
+    False,
+    Nil,
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +49,7 @@ pub type MalResult<T> = Result<T, MalError>;
 impl fmt::Display for MalForm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MalForm::NativeFn(name, _) => write!(f, "{}", name),
+            MalForm::NativeFn(name, _) => write!(f, "#<{}>", name),
             MalForm::Atom(x) => write!(f, "{}", x),
             MalForm::List(xs) => {
                 write!(f, "(")?;
@@ -100,6 +103,9 @@ impl fmt::Display for MalAtom {
             MalAtom::Key(s) => write!(f, "{}", s),
             MalAtom::Number(n) => write!(f, "{}", n),
             MalAtom::Symbol(s) => write!(f, "{}", s),
+            MalAtom::True => write!(f, "true"),
+            MalAtom::False => write!(f, "false"),
+            MalAtom::Nil => write!(f, "nil"),
         }
     }
 }

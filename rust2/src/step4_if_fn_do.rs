@@ -138,6 +138,57 @@ fn eval_fn(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     }
 }
 
+fn eval_do(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let mut result = MalForm::Atom(MalAtom::Nil);
+
+    for arg in args {
+        result = eval_ast(&arg, env)?;
+    }
+
+    Ok(result)
+}
+
+fn eval_if(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let cond_ast = args.get(0).ok_or(MalError::EvalError(format!("Missing condition for 'if'")))?;
+    let cond = eval(cond_ast, env)?;
+
+    let i = match cond {
+        MalForm::Atom(MalAtom::False) | MalForm::Atom(MalAtom::Nil) => 2,
+        _ => 1,
+    };
+
+    let arg = args.get(i).unwrap_or(&MalForm::Atom(MalAtom::Nil));
+    eval(arg, env)
+}
+
+fn get_binds(form: &MalForm) -> MalResult<Vec<String>> {
+    let v = match form {
+        MalForm::List(x) => x,
+        MalForm::Vector(x) => x,
+        _ => return Err(MalError::EvalError(format!("'fn*' bindings list must be a list or vector, {} given", form))),
+    };
+
+    let res: MalResult<Vec<_>> = v.iter().map(|x| match x {
+        MalForm::Atom(MalAtom::Symbol(name)) => Ok(name.clone()),
+        _ => Err(MalError::EvalError(format!("'fn*' bindings must be symbols, {} given", x))),
+    }).collect();
+
+    res
+}
+
+fn eval_fn_(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let outer = env.clone();
+
+    let bindings = get_binds(&args[0])?;
+    let body = args[1].clone();
+
+    Ok(MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params| {
+        let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
+
+        eval(&body, &env)
+    }))))
+}
+
 fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     Ok(if let MalForm::List(xs) = ast {
         if xs.is_empty() {
@@ -147,6 +198,9 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
             match &s[0] {
                 MalForm::Atom(MalAtom::Symbol(sym)) if sym == "def!" => eval_def_(&s[1..], env)?,
                 MalForm::Atom(MalAtom::Symbol(sym)) if sym == "let*" => eval_let_(&s[1..], env)?,
+                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "do" => eval_do(&s[1..], env)?,
+                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "if" => eval_if(&s[1..], env)?,
+                MalForm::Atom(MalAtom::Symbol(sym)) if sym == "fn*" => eval_fn_(&s[1..], env)?,
                 _ => eval_fn(ast, env)?,
             }
         }

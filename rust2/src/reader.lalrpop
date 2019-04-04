@@ -29,14 +29,20 @@ List = "(" <FormInner*> ws? ")";
 Vector = "[" <FormInner*> ws? "]";
 HashMap = "{" <(<Key> <FormInner>)*> ws? "}";
 
-Atom: MalAtom = { Key => MalAtom::Key(<>), NumOrSymbol };
+Atom: MalAtom = {
+    "true" => MalAtom::True,
+    "false" => MalAtom::False,
+    "nil" => MalAtom::Nil,
+    Key => MalAtom::Key(<>),
+    NumOrSymbol,
+};
 
 NumOrSymbol: MalAtom = <s:r#"[^@~\s\[\]{}('"`,:;)][^\s\[\]{}('"`,;)]*"#> => match f32::from_str(s) {
     Ok(n) => MalAtom::Number(n),
     Err(_) => MalAtom::Symbol(String::from(s)),
 };
 
-Key = { String, Keyword }
+Key = { String, Keyword };
 
 String: MalKey = <s:r#""(?:\\.|[^\\"])*"?"#> => {
     if s.chars().last().unwrap() != '"' {
