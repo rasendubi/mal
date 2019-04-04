@@ -120,29 +120,6 @@ fn eval_fn(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     }
 }
 
-fn eval_do(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
-    let mut result = MalForm::Atom(MalAtom::Nil);
-
-    for arg in args {
-        result = eval(&arg, env)?;
-    }
-
-    Ok(result)
-}
-
-fn eval_if(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
-    let cond_ast = args.get(0).ok_or(MalError::EvalError(format!("Missing condition for 'if'")))?;
-    let cond = eval(cond_ast, env)?;
-
-    let i = match cond {
-        MalForm::Atom(MalAtom::False) | MalForm::Atom(MalAtom::Nil) => 2,
-        _ => 1,
-    };
-
-    let arg = args.get(i).unwrap_or(&MalForm::Atom(MalAtom::Nil));
-    eval(arg, env)
-}
-
 fn get_binds(form: &MalForm) -> MalResult<Vec<String>> {
     let v = match form {
         MalForm::List(x) => x,
@@ -191,11 +168,30 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
 
                                 ast = value_ast.clone();
                                 env = new_env.clone();
+                                // tco
                             },
                             _ => return Err(MalError::EvalError("'let*' requires at least 2 arguments".to_string())),
                         },
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "do" => return eval_do(&s[1..], &env),
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "if" => return eval_if(&s[1..], &env),
+                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "do" => {
+                        for arg in &s[1 .. s.len()-1] {
+                            let _ = eval(&arg, &env)?;
+                        }
+
+                        ast = s[s.len() - 1].clone();
+                        // tco
+                    },
+                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "if" => {
+                        let cond_ast = s.get(1).ok_or(MalError::EvalError(format!("Missing condition for 'if'")))?;
+                        let cond = eval(cond_ast, &env)?;
+
+                        let i = match cond {
+                            MalForm::Atom(MalAtom::False) | MalForm::Atom(MalAtom::Nil) => 3,
+                            _ => 2,
+                        };
+
+                        ast = s.get(i).unwrap_or(&MalForm::Atom(MalAtom::Nil)).clone();
+                        // tco
+                    },
                     MalForm::Atom(MalAtom::Symbol(sym)) if sym == "fn*" => return eval_fn_(&s[1..], &env),
                     _ => return eval_fn(&ast, &env),
                 }
