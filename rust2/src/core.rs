@@ -31,7 +31,7 @@ fn native_fn<F: 'static>(name: &'static str, f: F) -> MalForm
     MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(f)))
 }
 
-fn binary_fn<T>(name: &'static str, f: fn(f32, f32) -> T) -> MalForm
+fn binary_fn<T>(name: &'static str, f: fn(f64, f64) -> T) -> MalForm
     where T: ToMalForm + 'static
 {
     native_fn(name, move |vec: Vec<MalForm>| {
@@ -75,7 +75,7 @@ fn count(args: Vec<MalForm>) -> MalResult<MalForm> {
         None => return Err(MalError::EvalError(format!("'count' expects a list or a vector, nothing was given"))),
     };
 
-    Ok(MalForm::Atom(MalAtom::Number(vec.len() as f32)))
+    Ok(MalForm::Atom(MalAtom::Number(vec.len() as f64)))
 }
 
 fn eq(args: Vec<MalForm>) -> MalResult<MalForm> {

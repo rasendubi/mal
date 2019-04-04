@@ -17,7 +17,7 @@ use env::Env;
 const PROMPT: &str = "user> ";
 const HISTORY_FILE: &str = "mal_history.txt";
 
-fn binary_fn(name: &'static str, f: fn(f32, f32) -> f32) -> MalForm {
+fn binary_fn(name: &'static str, f: fn(f64, f64) -> f64) -> MalForm {
     MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>| {
         match vec.as_slice() {
             [MalForm::Atom(MalAtom::Number(ref a)), MalForm::Atom(MalAtom::Number(ref b))] => Ok(MalForm::Atom(MalAtom::Number(f(*a, *b)))),

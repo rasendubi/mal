@@ -12,7 +12,7 @@ mod core;
 mod printer;
 
 use rustyline::error::ReadlineError;
-use types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult};
+use types::{MalForm,MalError,MalAtom,MalNativeFn,MalFn,MalResult};
 use env::Env;
 
 const PROMPT: &str = "user> ";
@@ -106,20 +106,6 @@ fn eval_def_(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     }
 }
 
-fn eval_fn(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
-    if let MalForm::List(xs) = eval_ast(ast, env)? {
-        match &xs[0] {
-            MalForm::NativeFn(_, MalNativeFn(f)) => {
-                let args = &xs[1 ..];
-                f(args.to_vec())
-            },
-            head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
-        }
-    } else {
-        unreachable!();
-    }
-}
-
 fn get_binds(form: &MalForm) -> MalResult<Vec<String>> {
     let v = match form {
         MalForm::List(x) => x,
@@ -141,11 +127,7 @@ fn eval_fn_(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     let bindings = get_binds(&args[0])?;
     let body = args[1].clone();
 
-    Ok(MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params| {
-        let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
-
-        eval(&body, &env)
-    }))))
+    Ok(MalForm::MalFn(Rc::new(MalFn::new(outer, bindings, body, eval))))
 }
 
 fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
@@ -193,7 +175,23 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
                         // tco
                     },
                     MalForm::Atom(MalAtom::Symbol(sym)) if sym == "fn*" => return eval_fn_(&s[1..], &env),
-                    _ => return eval_fn(&ast, &env),
+                    _ => if let MalForm::List(xs) = eval_ast(&ast, &env)? {
+                        match &xs[0] {
+                            MalForm::NativeFn(_, MalNativeFn(f)) => {
+                                let args = &xs[1 ..];
+                                return f(args.to_vec());
+                            },
+                            MalForm::MalFn(f) => {
+                                env = Rc::new(RefCell::new(Env::new_fn_closure(
+                                    Some(f.env.clone()), &f.params, &xs[1 ..])?));
+                                ast = f.ast.clone();
+                                // tco
+                            },
+                            head => return Err(MalError::EvalError(format!("'{}' is not a function", head))),
+                        }
+                    } else {
+                        unreachable!();
+                    }
                 }
             }
         } else {

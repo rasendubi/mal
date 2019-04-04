@@ -12,6 +12,7 @@ impl MalForm {
 pub fn pr_str(x: &MalForm, print_readably: bool) -> String {
     match x {
         MalForm::NativeFn(name, _) => format!("#<{}>", name),
+        MalForm::MalFn(_) => format!("#<fn*>"),
         MalForm::Atom(MalAtom::Key(MalKey::String(s))) =>
             if print_readably { format!("{:?}", s) } else { s.clone() },
         MalForm::Atom(MalAtom::Key(MalKey::Keyword(s))) => format!(":{}", s),
