@@ -21,13 +21,20 @@ const HISTORY_FILE: &str = "mal_history.txt";
 fn main() {
     let mut editor = readline::Reader::new(HISTORY_FILE);
 
-    let mut repl_env = Env::new(None);
-    for (name, val) in core::get_namespace() {
-        repl_env.set(name.to_string(), val.clone());
-    }
-    let repl_env = Rc::new(RefCell::new(repl_env));
+    let repl_env = Rc::new(RefCell::new(Env::new(None)));
 
-    let _ = rep("(def! not (fn* (a) (if a false true)))", &repl_env);
+    for (name, val) in core::get_namespace() {
+        repl_env.borrow_mut().set(name.to_string(), val.clone());
+    }
+
+    let repl_env_clone = repl_env.clone(); // to be moved into eval
+    repl_env.borrow_mut().set("eval".to_string(), core::native_fn("eval", move |args| {
+        let ast = args.get(0).ok_or(MalError::EvalError(format!("'eval': argument required")))?;
+        eval(&ast, &repl_env_clone)
+    }));
+
+    let _ = rep(r#"(def! not (fn* (a) (if a false true)))"#, &repl_env);
+    let _ = rep(r#"(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))"#, &repl_env);
 
     loop {
         match editor.readline(PROMPT) {

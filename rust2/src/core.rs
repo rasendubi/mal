@@ -1,7 +1,9 @@
 use std::rc::Rc;
+use std::fs;
 
-use crate::types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult,ToMalForm};
+use crate::types::{MalForm,MalError,MalAtom,MalKey,MalNativeFn,MalResult,ToMalForm};
 use crate::printer::pr_seq;
+use crate::reader::read_str;
 
 pub fn get_namespace() -> Vec<(&'static str, MalForm)> {
     vec![
@@ -22,10 +24,12 @@ pub fn get_namespace() -> Vec<(&'static str, MalForm)> {
         ("pr-str", native_fn("pr-str", pr_str)),
         ("str", native_fn("str", str)),
         ("println", native_fn("println", println)),
+        ("read-string", native_fn("read-string", read_string)),
+        ("slurp", native_fn("slurp", slurp)),
     ]
 }
 
-fn native_fn<F: 'static>(name: &'static str, f: F) -> MalForm
+pub fn native_fn<F: 'static>(name: &'static str, f: F) -> MalForm
     where F: Fn(Vec<MalForm>) -> MalResult<MalForm>
 {
     MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(f)))
@@ -66,7 +70,7 @@ fn empty_q(args: Vec<MalForm>) -> MalResult<MalForm> {
     Ok(vec.is_empty().to_mal_form())
 }
 
-fn count(args: Vec<MalForm>) -> MalResult<MalForm> {
+fn count(args: Vec<MalForm> ) -> MalResult<MalForm> {
     let vec = match args.get(0) {
         Some(MalForm::List(v)) => v,
         Some(MalForm::Vector(v)) => v,
@@ -103,4 +107,23 @@ fn pr_str(args: Vec<MalForm>) -> MalResult<MalForm> {
 
 fn str(args: Vec<MalForm>) -> MalResult<MalForm> {
     Ok(pr_seq(&args, "", false).to_mal_form())
+}
+
+fn read_string(args: Vec<MalForm>) -> MalResult<MalForm> {
+    match args.get(0) {
+        Some(MalForm::Atom(MalAtom::Key(MalKey::String(ref s)))) => read_str(s),
+        Some(x) => Err(MalError::EvalError(format!("'read-string': argument must be a string, {} was given", x))),
+        _ => Err(MalError::EvalError(format!("'read-string': argument required"))),
+    }
+}
+
+fn slurp(args: Vec<MalForm>) -> MalResult<MalForm> {
+    match args.get(0) {
+        Some(MalForm::Atom(MalAtom::Key(MalKey::String(ref s)))) => {
+            let contents = fs::read_to_string(s);
+            Ok(contents.map(|x| x.to_mal_form()).unwrap_or(().to_mal_form()))
+        },
+        Some(x) => Err(MalError::EvalError(format!("'slurp': argument must be a string, {} was given", x))),
+        _ => Err(MalError::EvalError(format!("'slurp': argument required"))),
+    }
 }
