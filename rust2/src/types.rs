@@ -11,30 +11,30 @@ pub trait ToMalForm {
 
 impl ToMalForm for bool {
     fn to_mal_form(&self) -> MalForm {
-        MalForm::Atom(if *self {MalAtom::True} else {MalAtom::False})
+        MalForm::Bool(*self)
     }
 }
 
 impl ToMalForm for f64 {
     fn to_mal_form(&self) -> MalForm {
-        MalForm::Atom(MalAtom::Number(*self))
+        MalForm::Number(*self)
     }
 }
 
 impl ToMalForm for String {
     fn to_mal_form(&self) -> MalForm {
-        MalForm::Atom(MalAtom::Key(MalKey::String(self.clone())))
+        MalForm::Key(MalKey::String(self.clone()))
     }
 }
 
 impl ToMalForm for () {
     fn to_mal_form(&self) -> MalForm {
-        MalForm::Atom(MalAtom::Nil)
+        MalForm::Nil
     }
 }
 
 impl ToMalForm for MalKey {
     fn to_mal_form(&self) -> MalForm {
-        MalForm::Atom(MalAtom::Key(self.clone()))
+        MalForm::Key(self.clone())
     }
 }

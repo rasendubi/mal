@@ -11,8 +11,12 @@ pub enum MalForm {
     MalFn(Rc<MalFn>),
     List(Vec<MalForm>),
     Vector(Vec<MalForm>),
-    Atom(MalAtom),
     HashMap(HashMap<MalKey, MalForm>),
+    Key(MalKey),
+    Number(f64),
+    Symbol(String),
+    Bool(bool),
+    Nil,
 }
 
 #[derive(Clone)]
@@ -47,16 +51,6 @@ pub enum MalKey {
     Keyword(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum MalAtom {
-    Key(MalKey),
-    Number(f64),
-    Symbol(String),
-    True,
-    False,
-    Nil,
-}
-
 impl MalForm {
     pub fn coerce_list(&self) -> Option<&Vec<MalForm>> {
         match self {
@@ -87,8 +81,12 @@ impl PartialEq<MalForm> for MalForm {
 
         match (self, other) {
             (MalForm::NativeFn(_, f1), MalForm::NativeFn(_, f2)) => f1 == f2,
-            (MalForm::Atom(a1), MalForm::Atom(a2)) => a1 == a2,
             (MalForm::HashMap(h1), MalForm::HashMap(h2)) => h1 == h2,
+            (MalForm::Key(a1), MalForm::Key(a2)) => a1 == a2,
+            (MalForm::Number(a1), MalForm::Number(a2)) => a1 == a2,
+            (MalForm::Symbol(a1), MalForm::Symbol(a2)) => a1 == a2,
+            (MalForm::Bool(a1), MalForm::Bool(a2)) => a1 == a2,
+            (MalForm::Nil, MalForm::Nil) => true,
             _ => false,
         }
     }

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::fs;
 
-use crate::types::{MalForm,MalError,MalAtom,MalKey,MalNativeFn,MalResult,ToMalForm};
+use crate::types::{MalForm,MalError,MalKey,MalNativeFn,MalResult,ToMalForm};
 use crate::printer::pr_seq;
 use crate::reader::read_str;
 
@@ -40,7 +40,7 @@ fn binary_fn<T>(name: &'static str, f: fn(f64, f64) -> T) -> MalForm
 {
     native_fn(name, move |vec: Vec<MalForm>| {
         match vec.as_slice() {
-            [MalForm::Atom(MalAtom::Number(ref a)), MalForm::Atom(MalAtom::Number(ref b))] => Ok(f(*a, *b).to_mal_form()),
+            [MalForm::Number(ref a), MalForm::Number(ref b)] => Ok(f(*a, *b).to_mal_form()),
             _ => Err(MalError::EvalError(format!("'{}': wrong arguments", name))),
         }
     })
@@ -74,12 +74,12 @@ fn count(args: Vec<MalForm> ) -> MalResult<MalForm> {
     let vec = match args.get(0) {
         Some(MalForm::List(v)) => v,
         Some(MalForm::Vector(v)) => v,
-        Some(MalForm::Atom(MalAtom::Nil)) => return Ok(0.0.to_mal_form()),
+        Some(MalForm::Nil) => return Ok(0.0.to_mal_form()),
         Some(x) => return Err(MalError::EvalError(format!("'count' expects a list or a vector, {} was given", x))),
         None => return Err(MalError::EvalError(format!("'count' expects a list or a vector, nothing was given"))),
     };
 
-    Ok(MalForm::Atom(MalAtom::Number(vec.len() as f64)))
+    Ok(MalForm::Number(vec.len() as f64))
 }
 
 fn eq(args: Vec<MalForm>) -> MalResult<MalForm> {
@@ -111,7 +111,7 @@ fn str(args: Vec<MalForm>) -> MalResult<MalForm> {
 
 fn read_string(args: Vec<MalForm>) -> MalResult<MalForm> {
     match args.get(0) {
-        Some(MalForm::Atom(MalAtom::Key(MalKey::String(ref s)))) => read_str(s),
+        Some(MalForm::Key(MalKey::String(ref s))) => read_str(s),
         Some(x) => Err(MalError::EvalError(format!("'read-string': argument must be a string, {} was given", x))),
         _ => Err(MalError::EvalError(format!("'read-string': argument required"))),
     }
@@ -119,7 +119,7 @@ fn read_string(args: Vec<MalForm>) -> MalResult<MalForm> {
 
 fn slurp(args: Vec<MalForm>) -> MalResult<MalForm> {
     match args.get(0) {
-        Some(MalForm::Atom(MalAtom::Key(MalKey::String(ref s)))) => {
+        Some(MalForm::Key(MalKey::String(ref s))) => {
             let contents = fs::read_to_string(s);
             Ok(contents.map(|x| x.to_mal_form()).unwrap_or(().to_mal_form()))
         },

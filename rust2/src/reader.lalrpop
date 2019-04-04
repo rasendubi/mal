@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::types::{MalForm, MalAtom, MalKey};
+use crate::types::{MalForm, MalKey};
 use crate::utils::unescape;
 
 grammar<'err>(errors: &'err mut Vec<lalrpop_util::ParseError<usize, (usize, String), &'static str>>);
@@ -8,17 +8,17 @@ grammar<'err>(errors: &'err mut Vec<lalrpop_util::ParseError<usize, (usize, Stri
 pub Form: MalForm = <FormInner> ws?;
 
 FormInner: MalForm = {
-    ws? <atom:Atom> => MalForm::Atom(atom),
+    ws? <Atom>,
     ws? <list:List> => MalForm::List(list),
     ws? <vector:Vector> => MalForm::Vector(vector),
     ws? <hash:HashMap> => MalForm::HashMap(hash.into_iter().collect()),
-    ws? "'"  <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("quote".to_string())), form)),
-    ws? "`"  <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("quasiquote".to_string())), form)),
-    ws? "~"  <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("unquote".to_string())), form)),
-    ws? "~@" <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("splice-unquote".to_string())), form)),
-    ws? "@"  <form:FormInner> => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("deref".to_string())), form)),
+    ws? "'"  <form:FormInner> => MalForm::List(vec!(MalForm::Symbol("quote".to_string()), form)),
+    ws? "`"  <form:FormInner> => MalForm::List(vec!(MalForm::Symbol("quasiquote".to_string()), form)),
+    ws? "~"  <form:FormInner> => MalForm::List(vec!(MalForm::Symbol("unquote".to_string()), form)),
+    ws? "~@" <form:FormInner> => MalForm::List(vec!(MalForm::Symbol("splice-unquote".to_string()), form)),
+    ws? "@"  <form:FormInner> => MalForm::List(vec!(MalForm::Symbol("deref".to_string()), form)),
     ws? "^"  <meta:FormInner>
-             <val:FormInner>  => MalForm::List(vec!(MalForm::Atom(MalAtom::Symbol("with-meta".to_string())), val, meta)),
+             <val:FormInner>  => MalForm::List(vec!(MalForm::Symbol("with-meta".to_string()), val, meta)),
 }
 
 ws: () = { Whitespace, Comment };
@@ -29,17 +29,17 @@ List = "(" <FormInner*> ws? ")";
 Vector = "[" <FormInner*> ws? "]";
 HashMap = "{" <(<Key> <FormInner>)*> ws? "}";
 
-Atom: MalAtom = {
-    "true" => MalAtom::True,
-    "false" => MalAtom::False,
-    "nil" => MalAtom::Nil,
-    Key => MalAtom::Key(<>),
+Atom: MalForm = {
+    "true" => MalForm::Bool(true),
+    "false" => MalForm::Bool(false),
+    "nil" => MalForm::Nil,
+    Key => MalForm::Key(<>),
     NumOrSymbol,
 };
 
-NumOrSymbol: MalAtom = <s:r#"[^@~\s\[\]{}('"`,:;)][^\s\[\]{}('"`,;)]*"#> => match f64::from_str(s) {
-    Ok(n) => MalAtom::Number(n),
-    Err(_) => MalAtom::Symbol(String::from(s)),
+NumOrSymbol: MalForm = <s:r#"[^@~\s\[\]{}('"`,:;)][^\s\[\]{}('"`,;)]*"#> => match f64::from_str(s) {
+    Ok(n) => MalForm::Number(n),
+    Err(_) => MalForm::Symbol(String::from(s)),
 };
 
 Key = { String, Keyword };

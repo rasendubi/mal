@@ -12,7 +12,7 @@ mod core;
 mod printer;
 
 use rustyline::error::ReadlineError;
-use types::{MalForm,MalError,MalAtom,MalNativeFn,MalFn,MalResult};
+use types::{MalForm,MalError,MalNativeFn,MalFn,MalResult};
 use env::Env;
 
 const PROMPT: &str = "user> ";
@@ -54,7 +54,7 @@ fn read(str: &str) -> MalResult<MalForm> {
 
 fn eval_ast(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     Ok(match ast {
-        MalForm::Atom(MalAtom::Symbol(ref sym)) => env.borrow().get(&sym)?.clone(),
+        MalForm::Symbol(ref sym) => env.borrow().get(&sym)?.clone(),
         MalForm::List(ref list) => {
             let res: Result<Vec<_>, _> = list.into_iter().map(|x| eval(x, env)).collect();
             MalForm::List(res?)
@@ -81,7 +81,7 @@ fn process_bindings(bindings_ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult
     let mut b = vec.into_iter();
 
     while let Some(key_ast) = b.next() {
-        if let MalForm::Atom(MalAtom::Symbol(ref key)) = key_ast {
+        if let MalForm::Symbol(ref key) = key_ast {
             let val_ast = b.next().ok_or(MalError::EvalError(format!("'let*': mising value for {}", key)))?;
             let val = eval(val_ast, env)?;
 
@@ -96,7 +96,7 @@ fn process_bindings(bindings_ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult
 
 fn eval_def_(args: &[MalForm], env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     match args {
-        [MalForm::Atom(MalAtom::Symbol(name)), val_ast] => {
+        [MalForm::Symbol(name), val_ast] => {
             let val = eval(val_ast, env)?;
             env.borrow_mut().set(name.clone(), val.clone());
             Ok(val)
@@ -114,7 +114,7 @@ fn get_binds(form: &MalForm) -> MalResult<Vec<String>> {
     };
 
     let res: MalResult<Vec<_>> = v.iter().map(|x| match x {
-        MalForm::Atom(MalAtom::Symbol(name)) => Ok(name.clone()),
+        MalForm::Symbol(name) => Ok(name.clone()),
         _ => Err(MalError::EvalError(format!("'fn*' bindings must be symbols, {} given", x))),
     }).collect();
 
@@ -141,8 +141,8 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
             } else {
                 let s = xs.as_slice();
                 match &s[0] {
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "def!" => return eval_def_(&s[1..], &env),
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "let*" =>
+                    MalForm::Symbol(sym) if sym == "def!" => return eval_def_(&s[1..], &env),
+                    MalForm::Symbol(sym) if sym == "let*" =>
                         match &s[1..] {
                             [bindings_ast, value_ast] => {
                                 let new_env = Rc::new(RefCell::new(Env::new(Some(env.clone()))));
@@ -154,7 +154,7 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
                             },
                             _ => return Err(MalError::EvalError("'let*' requires at least 2 arguments".to_string())),
                         },
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "do" => {
+                    MalForm::Symbol(sym) if sym == "do" => {
                         for arg in &s[1 .. s.len()-1] {
                             let _ = eval(&arg, &env)?;
                         }
@@ -162,19 +162,19 @@ fn eval(ast: &MalForm, env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
                         ast = s[s.len() - 1].clone();
                         // tco
                     },
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "if" => {
+                    MalForm::Symbol(sym) if sym == "if" => {
                         let cond_ast = s.get(1).ok_or(MalError::EvalError(format!("Missing condition for 'if'")))?;
                         let cond = eval(cond_ast, &env)?;
 
                         let i = match cond {
-                            MalForm::Atom(MalAtom::False) | MalForm::Atom(MalAtom::Nil) => 3,
+                            MalForm::Bool(false) | MalForm::Nil => 3,
                             _ => 2,
                         };
 
-                        ast = s.get(i).unwrap_or(&MalForm::Atom(MalAtom::Nil)).clone();
+                        ast = s.get(i).unwrap_or(&MalForm::Nil).clone();
                         // tco
                     },
-                    MalForm::Atom(MalAtom::Symbol(sym)) if sym == "fn*" => return eval_fn_(&s[1..], &env),
+                    MalForm::Symbol(sym) if sym == "fn*" => return eval_fn_(&s[1..], &env),
                     _ => if let MalForm::List(xs) = eval_ast(&ast, &env)? {
                         match &xs[0] {
                             MalForm::NativeFn(_, MalNativeFn(f)) => {

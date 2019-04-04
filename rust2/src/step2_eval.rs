@@ -9,7 +9,7 @@ mod utils;
 mod printer;
 
 use rustyline::error::ReadlineError;
-use types::{MalForm,MalError,MalAtom,MalNativeFn,MalResult};
+use types::{MalForm,MalError,MalNativeFn,MalResult};
 
 const PROMPT: &str = "user> ";
 const HISTORY_FILE: &str = "mal_history.txt";
@@ -17,7 +17,7 @@ const HISTORY_FILE: &str = "mal_history.txt";
 fn binary_fn(name: &'static str, f: fn(f64, f64) -> f64) -> MalForm {
     MalForm::NativeFn(name.to_string(), MalNativeFn(Rc::new(move |vec: Vec<MalForm>| {
         match vec.as_slice() {
-            [MalForm::Atom(MalAtom::Number(ref a)), MalForm::Atom(MalAtom::Number(ref b))] => Ok(MalForm::Atom(MalAtom::Number(f(*a, *b)))),
+            [MalForm::Number(ref a), MalForm::Number(ref b)] => Ok(MalForm::Number(f(*a, *b))),
             _ => Err(MalError::EvalError(format!("'{}': wrong arguments", name))),
         }
     })))
@@ -59,7 +59,7 @@ fn read(str: &String) -> MalResult<MalForm> {
 
 fn eval_ast(ast: &MalForm, env: &mut Env) -> MalResult<MalForm> {
     Ok(match ast {
-        MalForm::Atom(MalAtom::Symbol(ref sym)) => match env.get(sym) {
+        MalForm::Symbol(ref sym) => match env.get(sym) {
             Some(val) => val.clone(),
             None => return Err(MalError::EvalError(format!("'{}' not found", sym))),
         },
