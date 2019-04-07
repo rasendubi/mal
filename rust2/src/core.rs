@@ -31,6 +31,8 @@ pub fn get_namespace() -> Vec<(&'static str, MalForm)> {
         ("atom?", native_fn("atom?", atom_q)),
         ("deref", native_fn("deref", deref)),
         ("reset!", native_fn("reset!", reset_)),
+        ("cons", native_fn("cons", cons)),
+        ("concat", native_fn("concat", concat)),
     ]
 }
 
@@ -169,13 +171,32 @@ fn reset_(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     }
 }
 
-// pub fn swap_(args: Vec<MalForm>, eval: ) -> MalResult<MalForm> {
-//     if args.len() < 2 {
-//         return Err(MalError::EvalError(format!("'swap!': at least 2 arguments required")));
-//     }
-//
-//     let atom = args[0];
-//     let f = args[1];
-//     let args = args[2 ..];
-//
-// }
+fn cons(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    match (args.get(0), args.get(1).and_then(|x| x.coerce_list())) {
+        (Some(x), Some(xs)) => {
+            let mut res = xs.clone();
+            res.insert(0, x.clone());
+            Ok(MalForm::List(res))
+        },
+        _ => Err(MalError::EvalError(format!("'cons': wrong arguments")))
+    }
+}
+
+fn concat(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let mut result = Vec::new();
+
+    let mut it = args.into_iter();
+    while let Some(ref mut x) = it.next() {
+        match x {
+            MalForm::List(ref mut xs) => {
+                result.append(xs);
+            },
+            MalForm::Vector(ref mut xs) => {
+                result.append(xs);
+            },
+            _ => return Err(MalError::EvalError(format!("'concat': arguments must be lists, {} given", x))),
+        }
+    }
+
+    Ok(MalForm::List(result))
+}
