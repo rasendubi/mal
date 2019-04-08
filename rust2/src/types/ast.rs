@@ -28,6 +28,7 @@ pub struct MalFn {
     pub ast: MalForm,
     pub params: Vec<String>,
     pub env: Rc<RefCell<Env>>,
+    pub is_macro: bool,
     fn_: MalForm, // MalNativeFn
 }
 
@@ -37,6 +38,7 @@ impl MalFn {
             ast: body.clone(),
             params: bindings.clone(),
             env: outer.clone(),
+            is_macro: false,
             fn_: MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params, _env| {
                 let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
 

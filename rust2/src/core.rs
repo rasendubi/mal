@@ -33,6 +33,9 @@ pub fn get_namespace() -> Vec<(&'static str, MalForm)> {
         ("reset!", native_fn("reset!", reset_)),
         ("cons", native_fn("cons", cons)),
         ("concat", native_fn("concat", concat)),
+        ("nth", native_fn("nth", nth)),
+        ("first", native_fn("first", first)),
+        ("rest", native_fn("rest", rest)),
     ]
 }
 
@@ -199,4 +202,40 @@ fn concat(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     }
 
     Ok(MalForm::List(result))
+}
+
+fn nth(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    match (args.get(0), args.get(1)) {
+        (Some(xs_list), Some(MalForm::Number(i))) => {
+            let xs = xs_list.coerce_list().ok_or(MalError::EvalError(format!("'nth': first argument is neither a list nor a vector")))?;
+            Ok(xs.get(*i as usize).ok_or(MalError::EvalError(format!("'nth': index out of bound")))?.clone())
+        },
+        _ => Err(MalError::EvalError(format!("'nth': wrong arguments")))
+    }
+}
+
+fn first(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    if let Some(MalForm::Nil) = args.get(0) {
+        return Ok(MalForm::Nil);
+    }
+
+    match args.get(0).and_then(|x| x.coerce_list()) {
+        Some(xs) => {
+            Ok(xs.get(0).unwrap_or(&MalForm::Nil).clone())
+        },
+        _ => Err(MalError::EvalError(format!("'first': wrong arguments")))
+    }
+}
+
+fn rest(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    if let Some(MalForm::Nil) = args.get(0) {
+        return Ok(MalForm::List(vec![]));
+    }
+
+    match args.get(0).and_then(|x| x.coerce_list()) {
+        Some(xs) => {
+            Ok(MalForm::List(xs.get(1 ..).unwrap_or(&[]).to_vec().clone()))
+        },
+        _ => Err(MalError::EvalError(format!("'rest': wrong arguments")))
+    }
 }
