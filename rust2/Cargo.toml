@@ -13,6 +13,10 @@ lalrpop-util = "0.16.3"
 regex = "0.2.1"
 
 [[bin]]
+name = "step9_try"
+path = "src/step9_try.rs"
+
+[[bin]]
 name = "step8_macros"
 path = "src/step8_macros.rs"
 

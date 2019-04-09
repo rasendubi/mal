@@ -1,8 +1,6 @@
 #![allow(dead_code)]
-pub mod error;
 pub mod ast;
 
-pub use error::*;
 pub use ast::*;
 
 pub trait ToMalForm {

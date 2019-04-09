@@ -3,8 +3,6 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use super::{MalError, MalResult};
-
 #[derive(Debug, Clone)]
 pub enum MalForm {
     NativeFn(String, MalNativeFn),
@@ -29,7 +27,7 @@ pub struct MalFn {
     pub params: Vec<String>,
     pub env: Rc<RefCell<Env>>,
     pub is_macro: bool,
-    fn_: MalForm, // MalNativeFn
+    pub fn_: MalNativeFn,
 }
 
 impl MalFn {
@@ -39,11 +37,11 @@ impl MalFn {
             params: bindings.clone(),
             env: outer.clone(),
             is_macro: false,
-            fn_: MalForm::NativeFn("fn*".to_string(), MalNativeFn(Rc::new(move |params, _env| {
+            fn_: MalNativeFn(Rc::new(move |params, _env| {
                 let env = Rc::new(RefCell::new(Env::new_fn_closure(Some(outer.clone()), &bindings, &params)?));
 
                 eval(&body, &env)
-            }))),
+            })),
         }
     }
 }
@@ -56,6 +54,14 @@ pub enum MalKey {
 
 impl MalForm {
     pub fn coerce_list(&self) -> Option<&Vec<MalForm>> {
+        match self {
+            MalForm::List(v) => Some(v),
+            MalForm::Vector(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn coerce_list_mut(&mut self) -> Option<&mut Vec<MalForm>> {
         match self {
             MalForm::List(v) => Some(v),
             MalForm::Vector(v) => Some(v),
@@ -91,6 +97,26 @@ impl PartialEq<MalForm> for MalForm {
             (MalForm::Bool(a1), MalForm::Bool(a2)) => a1 == a2,
             (MalForm::Nil, MalForm::Nil) => true,
             _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum MalError {
+    ParseError(lalrpop_util::ParseError<usize, (usize, String), &'static str>),
+    EvalError(String),
+    MalException(MalForm),
+}
+
+pub type MalResult<T> = Result<T, MalError>;
+
+impl fmt::Display for MalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MalError::ParseError(err) =>
+                write!(f, "{}", err.clone().map_token(|(_size,s)| s)),
+            MalError::EvalError(msg) => write!(f, "Evaluation Error: {}", msg),
+            MalError::MalException(form) => write!(f, "Exception: {}", form),
         }
     }
 }

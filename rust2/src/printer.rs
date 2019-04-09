@@ -9,12 +9,28 @@ impl MalForm {
     }
 }
 
+pub fn escape_string(s: &String) -> String {
+    let mut res = String::new();
+
+    let mut it = s.chars();
+    while let Some(c) = it.next() {
+        match c {
+            '\\' => res.push_str("\\\\"),
+            '\n' => res.push_str("\\n"),
+            '"' => res.push_str("\\\""),
+            _ => res.push(c),
+        }
+    }
+
+    res
+}
+
 pub fn pr_str(x: &MalForm, print_readably: bool) -> String {
     match x {
         MalForm::NativeFn(name, _) => format!("#<{}>", name),
         MalForm::MalFn(_) => format!("#<fn*>"),
         MalForm::Key(MalKey::String(s)) =>
-            if print_readably { format!("{:?}", s) } else { s.clone() },
+            if print_readably { format!("\"{}\"", escape_string(s)) } else { s.clone() },
         MalForm::Key(MalKey::Keyword(s)) => format!(":{}", s),
         MalForm::Number(n) => format!("{}", n),
         MalForm::Symbol(s) => format!("{}", s),
