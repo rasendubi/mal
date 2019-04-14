@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs;
+use std::collections::HashMap;
 
 use crate::types::{MalForm,MalError,MalKey,MalNativeFn,MalResult,ToMalForm,Env};
 use crate::printer::pr_seq;
@@ -50,6 +51,13 @@ pub fn get_namespace() -> Vec<(&'static str, MalForm)> {
         ("vector?", native_fn("vector?", vector_q)),
         ("map?", native_fn("map?", map_q)),
         ("sequential?", native_fn("sequential?", sequential_q)),
+        ("hash-map", native_fn("hash-map", hash_map)),
+        ("assoc", native_fn("assoc", assoc)),
+        ("dissoc", native_fn("dissoc", dissoc)),
+        ("get", native_fn("get", get)),
+        ("contains?", native_fn("contains?", contains_q)),
+        ("keys", native_fn("keys", keys)),
+        ("vals", native_fn("vals", vals)),
     ]
 }
 
@@ -372,4 +380,120 @@ fn keyword(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
 
 fn vector(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
     Ok(MalForm::Vector(args))
+}
+
+fn hash_map(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let mut res = HashMap::new();
+
+    let mut it = args.iter();
+
+    while let Some(mkey) = it.next() {
+        match mkey {
+            MalForm::Key(key) => {
+                let value = it.next().ok_or(MalError::EvalError(format!("'hash-map': missing value for {}", key)))?;
+                res.insert(key.clone(), value.clone());
+            },
+            _ => return Err(MalError::EvalError(format!("'hash-map': key must be either a string or keyword"))),
+        }
+    }
+
+    Ok(MalForm::HashMap(res))
+}
+
+fn assoc(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let mut it = args.iter();
+
+    let mut res = match it.next() {
+        Some(MalForm::HashMap(x)) => x.clone(),
+        _ => return Err(MalError::EvalError(format!("'assoc': first argument must be a hash-map"))),
+    };
+
+    while let Some(mkey) = it.next() {
+        match mkey {
+            MalForm::Key(key) => {
+                let value = it.next().ok_or(MalError::EvalError(format!("'assoc': missing value for {}", key)))?;
+                res.insert(key.clone(), value.clone());
+            },
+            _ => return Err(MalError::EvalError(format!("'assoc': key must be either a string or keyword"))),
+        }
+    }
+
+    Ok(MalForm::HashMap(res))
+}
+
+fn dissoc(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let mut it = args.iter();
+
+    let mut res = match it.next() {
+        Some(MalForm::HashMap(x)) => x.clone(),
+        _ => return Err(MalError::EvalError(format!("'dissoc': first argument must be a hash-map"))),
+    };
+
+    while let Some(mkey) = it.next() {
+        match mkey {
+            MalForm::Key(key) => {
+                res.remove(key);
+            },
+            _ => return Err(MalError::EvalError(format!("'dissoc': key must be either a string or keyword"))),
+        }
+    }
+
+    Ok(MalForm::HashMap(res))
+}
+
+fn get(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let hm = match args.get(0) {
+        Some(MalForm::HashMap(x)) => x,
+        Some(MalForm::Nil) => return Ok(MalForm::Nil),
+        _ => return Err(MalError::EvalError(format!("'get': first argument must be a hash-map"))),
+    };
+
+    let key = match args.get(1) {
+        Some(MalForm::Key(k)) => k,
+        _ => return Err(MalError::EvalError(format!("'get': second argument must be either a string or keyword"))),
+    };
+
+    Ok(match hm.get(key) {
+        Some(x) => x.clone(),
+        None => MalForm::Nil,
+    })
+}
+
+fn contains_q(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let hm = match args.get(0) {
+        Some(MalForm::HashMap(x)) => x,
+        Some(MalForm::Nil) => return Ok(MalForm::Nil),
+        _ => return Err(MalError::EvalError(format!("'contains?': first argument must be a hash-map"))),
+    };
+
+    let key = match args.get(1) {
+        Some(MalForm::Key(k)) => k,
+        _ => return Err(MalError::EvalError(format!("'contains?': second argument must be either a string or keyword"))),
+    };
+
+    Ok(hm.contains_key(key).to_mal_form())
+}
+
+fn keys(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let hm = match args.get(0) {
+        Some(MalForm::HashMap(x)) => x,
+        // Some(MalForm::Nil) => return Ok(MalForm::Nil),
+        _ => return Err(MalError::EvalError(format!("'keys': first argument must be a hash-map"))),
+    };
+
+    let res = hm.keys().map(|x| MalForm::Key(x.clone())).collect::<Vec<_>>();
+
+    Ok(MalForm::List(res))
+}
+
+fn vals(args: Vec<MalForm>, _env: &Rc<RefCell<Env>>) -> MalResult<MalForm> {
+    let hm = match args.get(0) {
+        Some(MalForm::HashMap(x)) => x,
+        // Some(MalForm::Nil) => return Ok(MalForm::Nil),
+        _ => return Err(MalError::EvalError(format!("'vals': first argument must be a hash-map"))),
+    };
+
+    let res = hm.values().map(|x| x.clone()).collect::<Vec<_>>();
+
+    Ok(MalForm::List(res))
 }
